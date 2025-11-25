@@ -2,7 +2,8 @@ import os
 import pandas as pd
 import networkx as nx
 
-PROCESSED_DIR = "../data/processed/"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROCESSED_DIR = os.path.join(BASE_DIR, "../data/processed/")
 
 # Load the cleaned node and link datasets
 def load_processed():
