@@ -33,6 +33,7 @@ Effective traffic control is critical in cutting down congestion, time on the ro
 │   └── network_analysis.ipynb
 ├── src
 │   ├── preprocessing.py
+│   ├── temporal_preprocessing.py
 │   ├── build_network.py
 │   ├── centrality_analysis.py
 │   └── community_detection.py
@@ -43,3 +44,10 @@ Effective traffic control is critical in cutting down congestion, time on the ro
 │   │   └── ...
 └── README.md
 ```
+
+- preprocessing.py: Cleans raw Dallas node/link/OD CSVs, computes free flow and congested times, and writes processed datasets to data/processed/
+- temporal_preprocessing.py: Synthesize 4 different time of day travel times (am/midday/pm/evening) by interpolating between free flow and congested times then updates processed_links.csv and saves a backup
+- build_network.py: Loads processed nodes/links and builds the directed, weighted NetworkX graph using either congested or free flow travel times
+- centrality_analysis.py: Computes degree, weighted betweenness, and eigenvector centrality on the graph, prints top node stats, and saves rankings to data/processed/centrality_rankings.csv
+- community_detection.py: Runs Louvain community detection (CURRENTLY FAILING) (optional WORKING Girvan–Newman sample), summarizes community sizes, and saves assignments to data/processed/communities.csv
+- network_analysis.ipynb: E2E driver notebook that does preprocessing, builds the graph, runs centrality metrics, detects communities, and saves outputs to the processed data folder
