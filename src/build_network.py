@@ -12,7 +12,7 @@ def load_processed():
 
     if not os.path.exists(nodes_path) or not os.path.exists(links_path):
         raise FileNotFoundError(
-            f"Missing processed files --> run preprocessing.py first."
+            f"Missing processed files --> run preprocessing.py and temporal_preprocessing.py first"
         )
 
     print("Loading processed_nodes.csv...")
@@ -32,49 +32,67 @@ def load_processed():
 
     links_df : DataFrame
         Processed links containing:
-        Link_ID, From_Node_ID, To_Node_ID,
-        freeflow_time, congested_time
+        Link_ID, From_Node_ID, To_Node_ID, freeflow_time, congested_time, travel_time_<Period>
 
     weight_type : str
         "congested" --> use congested_time
         "freeflow" --> use freeflow_time
+        Which base weight to use when period is None
+    
+    period : {"AM", "Midday", "PM", "Evening", None}, default None
+        If not None --> use the column `travel_time_<period>` as the weight
+        For example: period="AM" -> weight column "travel_time_AM"
 
     Returns --> G : networkx.DiGraph
 """
-def build_graph(nodes_df, links_df, weight_type="congested"):
-    print(f"Building NetworkX graph using {weight_type} weight...")
+def build_graph(nodes_df, links_df, weight_type="congested", period=None):
+    
+    # Decide which column to use as the edge weight
+    if period is not None:
+        weight_col = f"travel_time_{period}"
+        if weight_col not in links_df.columns:
+            raise KeyError(
+                f"Requested period='{period}', but column '{weight_col}' was not found in processed_links.csv. "
+                "Run temporal_preprocessing.py first or check the period name."
+            )
+        print(f"Building graph using temporal weight column '{weight_col}'")
+    else:
+        if weight_type not in {"freeflow", "congested"}:
+            raise ValueError("weight_type must be 'freeflow' or 'congested'")
 
-    if weight_type not in ["freeflow", "congested"]:
-        raise ValueError("weight_type must be 'freeflow' or 'congested'")
-
-    weight_col = "congested_time" if weight_type == "congested" else "freeflow_time"
+        weight_col = "freeflow_time" if weight_type == "freeflow" else "congested_time"
+        print(f"Building graph using {weight_col} as weight")
 
     G = nx.DiGraph()
 
     # Add nodes with coordinates
     print(f"Adding {len(nodes_df)} nodes...")
     for _, row in nodes_df.iterrows():
+        node_id = int(row["Node_ID"])
         G.add_node(
-            int(row["Node_ID"]),
+            node_id,
             lon=float(row["Lon"]),
             lat=float(row["Lat"])
         )
 
     # Add edges with weights
     print(f"Adding {len(links_df)} edges...")
-
     missing_weights = 0
-
     for _, row in links_df.iterrows():
         u = int(row["From_Node_ID"])
         v = int(row["To_Node_ID"])
 
+        # Skip edges whose endpoints are missing just in case
+        if u not in G or v not in G:
+            continue
+
         weight = row.get(weight_col, None)
 
-        if weight is None or weight <= 0:
+        if weight is None or pd.isna(weight) or weight <= 0:
             missing_weights += 1
             continue
 
+        # Always keep core attributes; weight used by NX algorithms
         G.add_edge(
             u,
             v,
@@ -82,7 +100,7 @@ def build_graph(nodes_df, links_df, weight_type="congested"):
             length=float(row["Length"]),
             freeflow_time=float(row["freeflow_time"]),
             congested_time=float(row["congested_time"]),
-            weight=float(weight), # used by NX algorithms
+            weight=float(weight),
         )
 
     print(f"Graph build complete: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
@@ -92,12 +110,19 @@ def build_graph(nodes_df, links_df, weight_type="congested"):
     return G
 
 # Load processed data -> build graph -> return G
-def load_and_build(weight_type="congested"):
+"""
+    weight_type : {"freeflow", "congested"}
+        Used only when period is None.
+
+    period : {"AM", "Midday", "PM", "Evening", None}
+        selects travel_time_<period> as the weight column when not None
+    """
+def load_and_build(weight_type="congested", period=None):
     nodes_df, links_df = load_processed()
-    return build_graph(nodes_df, links_df, weight_type=weight_type)
+    return build_graph(nodes_df, links_df, weight_type=weight_type, period=period)
 
 
 if __name__ == "__main__":
     print("Building network graph...")
-    G = load_and_build(weight_type="congested")
+    G = load_and_build(period="AM") # or period=None, weight_type="congested"
     print("Done!")
