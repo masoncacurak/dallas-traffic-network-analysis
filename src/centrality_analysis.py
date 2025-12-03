@@ -8,7 +8,7 @@ PROCESSED_DIR = os.path.join(BASE_DIR, "../data/processed/")
 
 def _print_top_scores(name, scores, n=10):
     top = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:n]
-    print(f"\nTop {n} nodes by {name} centrality:")
+    print(f"Top {n} nodes by {name} centrality:")
     for rank, (node, value) in enumerate(top, start=1):
         print(f"{rank:2d}. Node {node}: {value:.6f}")
 
@@ -23,7 +23,9 @@ def _print_stats(name, scores):
     )
 
 # Return degree, betweenness, & eigenvector centrality dictionaries
-def compute_centrality_measures(G):
+# ! Betweenness now defaults to sampled sources (k=500) to avoid crazy runtime of exact betweenness on the full graph
+# ! Set betweenness_sample_k to None or <=0 if you need the exact computation
+def compute_centrality_measures(G, betweenness_sample_k=500, betweenness_seed=42):
     if G is None or G.number_of_nodes() == 0:
         raise ValueError("Graph is empty or None")
 
@@ -32,8 +34,21 @@ def compute_centrality_measures(G):
     _print_top_scores("degree", degree_centrality)
     _print_stats("degree", degree_centrality)
 
-    print("\nComputing betweenness centrality by weight...")
-    betweenness_centrality = nx.betweenness_centrality(G, weight="weight", normalized=True)
+    if betweenness_sample_k is None or betweenness_sample_k <= 0:
+        k = None # exact (slow)
+        betweenness_label = "exact (all sources)"
+    else:
+        k = min(betweenness_sample_k, G.number_of_nodes())
+        betweenness_label = f"approximate with k={k} sampled sources"
+
+    print(f"\nComputing betweenness centrality by weight ({betweenness_label})...")
+    betweenness_centrality = nx.betweenness_centrality(
+        G,
+        weight="weight",
+        normalized=True,
+        k=k,
+        seed=betweenness_seed if k is not None else None,
+    )
     _print_top_scores("betweenness", betweenness_centrality)
     _print_stats("betweenness", betweenness_centrality)
 
@@ -72,10 +87,9 @@ def compute_centrality_measures(G):
                 max_iter=10000,
                 tol=1e-04,
             )
-            print(f"Eigenvector converged on {label}{' (weighted)' if use_weight else ''}")
             break
         except nx.PowerIterationFailedConvergence:
-            print(f"Eigenvector failed to converge on {label} (max_iter reached)")
+            print(f"Eigenvector failed to converge")
 
     if eigenvector_centrality is None:
         # Final relaxed attempt on undirected graph with higher tolerance
