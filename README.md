@@ -19,15 +19,16 @@ Effective traffic control is critical in cutting down congestion, time on the ro
 
 ## Project Structure
 ```
-.
 ├── data
 │   ├── data_copy
 │   ├── processed
-│   │   ├── centrality_rankings.csv
-│   │   ├── communities.csv
+│   │   ├── centrality_rankings_<period>.csv
+│   │   ├── communities_<period>.csv
 │   │   ├── processed_links.csv
 │   │   ├── processed_nodes.csv
-│   │   └── processed_od.csv
+│   │   ├── processed_od.csv
+│   │   ├── commute_efficiency_summary.csv
+│   │   └── processed_links_temporal.csv
 │   └── raw
 ├── notebooks
 │   └── network_analysis.ipynb
@@ -47,7 +48,10 @@ Effective traffic control is critical in cutting down congestion, time on the ro
 
 - preprocessing.py: Cleans raw Dallas node/link/OD CSVs, computes free flow and congested times, and writes processed datasets to data/processed/
 - temporal_preprocessing.py: Synthesize 4 different time of day travel times (am/midday/pm/evening) by interpolating between free flow and congested times then updates processed_links.csv and saves a backup
-- build_network.py: Loads processed nodes/links and constructs a directed NetworkX graph, then you can choose base weights (freeflow/congested) or TOD weights via period (am, midday, pm, evening)
+- build_network.py: Loads processed nodes/links and constructs a directed NetworkX graph; supports base weights (freeflow/congested) or TOD weights (am/midday/pm/evening) and adds centroid connectors to the nearest network nodes so OD centroids are reachable
 - centrality_analysis.py: Computes degree, weighted betweenness, eigenvector centrality, prints top 10 stats, and saves rankings to data/processed/centrality_ranking_("selected weight").csv
 - community_detection.py: Runs Louvain community detection (CURRENTLY FAILING) (optional WORKING Girvan–Newman sample), summarizes community sizes, and saves assignments to data/processed/communities.csv
-- network_analysis.ipynb: E2E driver notebook that does preprocessing, builds the graph, runs centrality metrics, detects communities, and saves outputs to the processed data folder
+- network_analysis.ipynb: E2E driver notebook that does preprocessing, builds the graph, runs centrality metrics, detects communities, conducts commute efficiency experiment, and saves outputs to the processed data folder
+- commute_efficiency_summary.csv: Summary of baseline vs improved AM/PM average commute times and percent improvements from the notebook experiment
+- Centrality_rankings_<period>.csv: Per-period centrality rankings (degree, betweenness, eigenvector) computed on the temporal graphs
+- communities_<period>.csv: Louvain community assignments for each temporal graph
