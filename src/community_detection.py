@@ -35,7 +35,8 @@ def detect_communities(G, run_gn_sample=False, gn_max_nodes=1500):
     num_communities = len(sizes)
 
     print(f"Detected {num_communities} communities via Louvain")
-    print(f"Largest communities (by size): {size_list[:10]}")
+    print(f"Total communities: {num_communities} --> top sizes: {size_list[:10]}")
+    #print(f"Largest communities (by size): {size_list[:10]}")
 
     # Optional Girvan–Newman on sampled subgraph for comparison when graph is large
     if run_gn_sample and undirected.number_of_nodes() > gn_max_nodes:

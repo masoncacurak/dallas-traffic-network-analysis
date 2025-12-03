@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import networkx as nx
+import numpy as np
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROCESSED_DIR = os.path.join(BASE_DIR, "../data/processed/")
@@ -53,9 +54,9 @@ def build_graph(nodes_df, links_df, weight_type="congested", period=None):
         if weight_col not in links_df.columns:
             raise KeyError(
                 f"Requested period='{period}', but column '{weight_col}' was not found in processed_links.csv. "
-                "Run temporal_preprocessing.py first or check the period name."
+                "Run temporal_preprocessing.py first or check the period name"
             )
-        print(f"Building graph using temporal weight column '{weight_col}'")
+        print(f"Building graph using temporal weight column [{weight_col}]")
     else:
         if weight_type not in {"freeflow", "congested"}:
             raise ValueError("weight_type must be 'freeflow' or 'congested'")
@@ -65,14 +66,15 @@ def build_graph(nodes_df, links_df, weight_type="congested", period=None):
 
     G = nx.DiGraph()
 
-    # Add nodes with coordinates
+    # Add nodes with coordinates (keep tract/centroid flag)
     print(f"Adding {len(nodes_df)} nodes...")
     for _, row in nodes_df.iterrows():
         node_id = int(row["Node_ID"])
         G.add_node(
             node_id,
             lon=float(row["Lon"]),
-            lat=float(row["Lat"])
+            lat=float(row["Lat"]),
+            tract_node=int(row.get("Tract_Node", 0)),
         )
 
     # Add edges with weights
@@ -103,9 +105,60 @@ def build_graph(nodes_df, links_df, weight_type="congested", period=None):
             weight=float(weight),
         )
 
+    # Add centroid/tract connectors to tie isolated zone nodes into the network
+    def _haversine_meters(lon1, lat1, lon2_array, lat2_array):
+        # Vectorized haversine distance (meters) from one point to arrays
+        lon1, lat1 = np.radians(lon1), np.radians(lat1)
+        lon2, lat2 = np.radians(lon2_array), np.radians(lat2_array)
+        dlon = lon2 - lon1
+        dlat = lat2 - lat1
+        a = np.sin(dlat / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2) ** 2
+        c = 2 * np.arcsin(np.sqrt(a))
+        return 6371000.0 * c # Earth radius in meters
+
+    tract_df = nodes_df[nodes_df.get("Tract_Node", 0) == 1]
+    network_df = nodes_df[nodes_df.get("Tract_Node", 0) == 0]
+    if not tract_df.empty and not network_df.empty:
+        base_lon = network_df["Lon"].to_numpy()
+        base_lat = network_df["Lat"].to_numpy()
+        connector_k = min(3, len(network_df)) # connect to up to 3 nearest network nodes
+        connector_speed_mps = 15.0 # adjust for slower access links
+        added_connectors = 0
+        for _, row in tract_df.iterrows():
+            distances = _haversine_meters(row["Lon"], row["Lat"], base_lon, base_lat)
+            nearest_idx = np.argpartition(distances, connector_k - 1)[:connector_k]
+            for idx in nearest_idx:
+                target_node = int(network_df.iloc[idx]["Node_ID"])
+                length_m = float(distances[idx])
+                travel_time = length_m / connector_speed_mps
+                # Add connectors both directions
+                G.add_edge(
+                    int(row["Node_ID"]),
+                    target_node,
+                    link_id=None,
+                    length=length_m,
+                    freeflow_time=travel_time,
+                    congested_time=travel_time,
+                    weight=travel_time,
+                    connector=True,
+                )
+                G.add_edge(
+                    target_node,
+                    int(row["Node_ID"]),
+                    link_id=None,
+                    length=length_m,
+                    freeflow_time=travel_time,
+                    congested_time=travel_time,
+                    weight=travel_time,
+                    connector=True,
+                )
+                added_connectors += 2
+        print(f"Added {added_connectors} centroid connector edges (both directions)")
+    elif not tract_df.empty:
+        print("Warning: tract/centroid nodes present but no base network nodes to connect to")
+
     print(f"Graph build complete: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
-    if missing_weights > 0:
-        print(f"Warning: {missing_weights} edges skipped due to missing/invalid weights")
+    print(f"--------------------------------------------------")
 
     return G
 
