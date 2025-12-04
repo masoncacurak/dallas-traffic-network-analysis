@@ -40,9 +40,9 @@ Effective traffic control is critical in cutting down congestion, time on the ro
 │   └── community_detection.py
 ├── visuals
 │   ├── centrality_maps
-│   │   └── ...
+│   │   └── betweenness_<period>.png
 │   ├── community_plots
-│   │   └── ...
+│   │   └── communties_<period>.png
 └── README.md
 ```
 
@@ -52,6 +52,10 @@ Effective traffic control is critical in cutting down congestion, time on the ro
 - centrality_analysis.py: Computes degree, weighted betweenness, eigenvector centrality, prints top 10 stats, and saves rankings to data/processed/centrality_ranking_("selected weight").csv
 - community_detection.py: Runs Louvain community detection (CURRENTLY FAILING) (optional WORKING Girvan–Newman sample), summarizes community sizes, and saves assignments to data/processed/communities.csv
 - network_analysis.ipynb: E2E driver notebook that does preprocessing, builds the graph, runs centrality metrics, detects communities, conducts commute efficiency experiment, and saves outputs to the processed data folder
+
+- processed_links.csv: Cleaned and enriched edge list --> includes Link_ID, from/to node IDs, length, lanes/flow attributes, derived freeflow_time/congested_time, and TOD travel times
+- processed_nodes.csv: Cleaned node table --> includes Node_ID, coordinates (Lon, Lat), and Tract_Node flag indicating centroid/zone nodes (used for OD connectors)
+- processed_od.csv: Origin destination demand matrix representing trip counts between centroid/zone nodes used for commute analysis.
 - commute_efficiency_summary.csv: Summary of baseline vs improved AM/PM average commute times and percent improvements from the notebook experiment
-- Centrality_rankings_<period>.csv: Per-period centrality rankings (degree, betweenness, eigenvector) computed on the temporal graphs
-- communities_<period>.csv: Louvain community assignments for each temporal graph
+- Centrality_rankings_"period".csv: Per-period centrality rankings (degree, betweenness, eigenvector) computed on the temporal graphs
+- communities_"period".csv: Louvain community assignments for each temporal graph
