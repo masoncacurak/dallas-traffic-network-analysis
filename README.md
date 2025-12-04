@@ -50,7 +50,7 @@ Effective traffic control is critical in cutting down congestion, time on the ro
 - temporal_preprocessing.py: Synthesize 4 different time of day travel times (am/midday/pm/evening) by interpolating between free flow and congested times then updates processed_links.csv and saves a backup
 - build_network.py: Loads processed nodes/links and constructs a directed NetworkX graph; supports base weights (freeflow/congested) or TOD weights (am/midday/pm/evening) and adds centroid connectors to the nearest network nodes so OD centroids are reachable
 - centrality_analysis.py: Computes degree, weighted betweenness, eigenvector centrality, prints top 10 stats, and saves rankings to data/processed/centrality_ranking_("selected weight").csv
-- community_detection.py: Runs Louvain community detection (CURRENTLY FAILING) (optional WORKING Girvan–Newman sample), summarizes community sizes, and saves assignments to data/processed/communities.csv
+- community_detection.py: Runs Louvain community detection, summarizes community sizes, and saves assignments to data/processed/communities.csv
 - network_analysis.ipynb: E2E driver notebook that does preprocessing, builds the graph, runs centrality metrics, detects communities, conducts commute efficiency experiment, and saves outputs to the processed data folder
 
 - processed_links.csv: Cleaned and enriched edge list --> includes Link_ID, from/to node IDs, length, lanes/flow attributes, derived freeflow_time/congested_time, and TOD travel times
